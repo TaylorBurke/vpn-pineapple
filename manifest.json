@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "ww.vpn-pineapple",
+  "id": "taylorburke.vpn-pineapple",
   "name": "VPN Pineapple",
   "version": "1.0.0",
-  "author": "ww",
-  "description": "Shows a pineapple on the bar while the AirVPN (Eddie) tunnel is up, nothing otherwise",
+  "author": "Taylor Burke",
+  "license": "MIT",
+  "description": "A pineapple on the bar that shows your VPN status: upright while the tunnel is up, upside down and muted while it is down. Click it to connect or disconnect.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "VPN Pineapple",
-    "description": "Pineapple when the Eddie VPN interface exists",
+    "description": "VPN status pineapple with a connect/disconnect drawer",
     "category": "Network",
     "allowMultiple": false,
     "defaultSection": "right"

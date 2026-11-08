@@ -10,7 +10,7 @@ import qs.Commons as Commons
 // Disconnect.
 BarWidget {
   id: root
-  moduleName: "ww.vpn-pineapple"
+  moduleName: "taylorburke.vpn-pineapple"
 
   readonly property string iface: "Eddie"
   // Matches only the real Eddie engine, not its root-owned elevated helper
