@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "ww.vpn-pineapple",
+  "name": "VPN Pineapple",
+  "version": "1.0.0",
+  "author": "ww",
+  "description": "Shows a pineapple on the bar while the AirVPN (Eddie) tunnel is up, nothing otherwise",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "VPN Pineapple",
+    "description": "Pineapple when the Eddie VPN interface exists",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
