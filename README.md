@@ -68,6 +68,15 @@ live tunnel. Reports are welcome.
 Turn off **Run custom commands in a terminal** for commands that need no
 password, such as `nmcli`.
 
+## What it does not do
+
+VPN Pineapple is a status light, not a leak guard. An upright pineapple means
+only that the VPN's network interface exists. The widget does not check that
+your traffic, DNS or IPv6 actually go through the tunnel, and it does not block
+anything when the tunnel drops. For that, turn on your VPN's own protection,
+such as Eddie's Network Lock or Mullvad's lockdown mode, or set up a firewall
+kill switch.
+
 ## How it works
 
 Every two seconds the widget checks whether `/sys/class/net/<interface>` exists
