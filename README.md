@@ -1,6 +1,6 @@
 # VPN Pineapple
 
-![The pineapple upright while the VPN is connected, and upside down and muted while it is disconnected](preview.png)
+![The pineapple upright while connected and upside down while disconnected, the drawer with its gear button, and the settings view](preview.png)
 
 A bar widget for [Omarchy](https://omarchy.org) that shows your VPN status as a
 pineapple: upright and in the bar's normal color while the tunnel is up, upside
