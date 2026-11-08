@@ -7,5 +7,21 @@
   "status.eddieNoTunnel": "Eddie running, tunnel down",
   "status.disconnected": "Disconnected",
   "button.connect": "Connect",
-  "button.disconnect": "Disconnect"
+  "button.disconnect": "Disconnect",
+  "settings.open": "Settings",
+  "settings.title": "VPN Pineapple settings",
+  "settings.back": "Back",
+  "settings.saveFailed": "Could not save this change. Try again.",
+  "settings.preset": "VPN",
+  "settings.presetHelp": "Supplies the interface and commands",
+  "settings.name": "Name",
+  "settings.blankPreset": "Blank uses the preset's",
+  "settings.interface": "Network interface",
+  "settings.interfaceHelp": "Blank uses %1",
+  "settings.interfaceHelpCustom": "As shown by ip link",
+  "settings.connect": "Connect command",
+  "settings.disconnect": "Disconnect command",
+  "settings.commandHelp": "Blank uses the preset's. Runs with bash",
+  "settings.terminal": "Run commands in a terminal",
+  "settings.terminalHelp": "For sudo prompts. Applies to the two commands above"
 }

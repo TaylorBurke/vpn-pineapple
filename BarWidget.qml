@@ -16,7 +16,9 @@ BarWidget {
   id: root
   moduleName: "taylorburke.vpn-pineapple"
 
-  Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
+  Commons.Translations { id: catalog; directory: Qt.resolvedUrl("i18n") }
+  // Exposed so SettingsView can use the same catalog.
+  property alias strings: catalog
 
   function setting(key, fallback) {
     var v = root.settings ? root.settings[key] : undefined
@@ -24,9 +26,10 @@ BarWidget {
   }
   function trimmed(key) { return String(setting(key, "")).trim() }
 
+  readonly property var presets: ["AirVPN (Eddie)", "WireGuard (wg-quick)", "Mullvad", "Custom"]
   readonly property string preset: {
     var p = String(setting("preset", "AirVPN (Eddie)"))
-    return ["AirVPN (Eddie)", "WireGuard (wg-quick)", "Mullvad", "Custom"].indexOf(p) >= 0 ? p : "AirVPN (Eddie)"
+    return presets.indexOf(p) >= 0 ? p : "AirVPN (Eddie)"
   }
   readonly property bool isEddie: preset === "AirVPN (Eddie)"
   readonly property string presetIface:
@@ -60,6 +63,19 @@ BarWidget {
   property real pendingSince: 0
   property bool sawEddie: false
   property bool popupOpen: false
+  property bool showSettings: false
+  onPopupOpenChanged: if (!popupOpen) showSettings = false
+
+  // Writes the merged settings back to this widget's entry in shell.json;
+  // the bar then hands the new `settings` back in place.
+  function saveSettings(patch) {
+    var shell = root.bar ? root.bar.shell : null
+    if (!shell || typeof shell.updateEntryInline !== "function") return false
+    var merged = Object.assign({}, root.settings || {}, patch)
+    return shell.updateEntryInline(moduleName, merged) !== false
+  }
+  // The bar only shows a tooltip for widgets that report hover this way.
+  readonly property bool tooltipHovered: mouseArea.containsMouse
 
   function startPending(kind) {
     pending = kind
@@ -217,11 +233,34 @@ BarWidget {
     bar: root.bar
     owner: root
     open: root.popupOpen
-    contentWidth: popup.fittedContentWidth(Style.space(240))
-    contentHeight: popup.fittedContentHeight(column.implicitHeight)
+    contentWidth: popup.fittedContentWidth(root.showSettings ? Style.space(420) : Style.space(260))
+    contentHeight: popup.fittedContentHeight(root.showSettings ? settingsLoader.implicitHeight : column.implicitHeight)
+
+    Loader {
+      id: settingsLoader
+      anchors.left: parent.left
+      anchors.right: parent.right
+      active: root.showSettings
+      visible: active
+      sourceComponent: SettingsView {
+        widget: root
+        onDone: root.showSettings = false
+      }
+    }
+
+    PanelActionButton {
+      anchors.top: parent.top
+      anchors.right: parent.right
+      visible: !root.showSettings
+      iconText: "󰒓"
+      tooltipText: root.strings.t("settings.open", "Settings")
+      foreground: root.bar.foreground
+      onClicked: root.showSettings = true
+    }
 
     Column {
       id: column
+      visible: !root.showSettings
       anchors.fill: parent
       spacing: Style.space(10)
 

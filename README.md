@@ -22,7 +22,8 @@ The widget is added to the right of the bar. Move it with
 
 ## Settings
 
-Change settings in the widget's settings page, or from a terminal:
+Click the pineapple, then the gear in the drawer's top-right corner. Changes are
+saved as you make them. You can also set them from a terminal:
 
 ```sh
 omarchy bar set taylorburke.vpn-pineapple preset "WireGuard (wg-quick)"
