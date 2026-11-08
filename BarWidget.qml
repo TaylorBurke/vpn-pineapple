@@ -227,12 +227,15 @@ BarWidget {
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }
 
-  PopupCard {
+  // KeyboardPanel rather than PopupCard: an xdg-popup never receives keys,
+  // so the settings view's text fields could not be typed into.
+  KeyboardPanel {
     id: popup
     anchorItem: root
     bar: root.bar
     owner: root
     open: root.popupOpen
+    focusTarget: root.showSettings && settingsLoader.item ? settingsLoader.item : column
     contentWidth: popup.fittedContentWidth(root.showSettings ? Style.space(420) : Style.space(260))
     contentHeight: popup.fittedContentHeight(root.showSettings ? settingsLoader.implicitHeight : column.implicitHeight)
 
@@ -262,6 +265,7 @@ BarWidget {
       id: column
       visible: !root.showSettings
       anchors.fill: parent
+      Keys.onEscapePressed: function (event) { root.close(); event.accepted = true }
       spacing: Style.space(10)
 
       Row {

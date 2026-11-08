@@ -16,6 +16,7 @@ Column {
   signal done()
 
   spacing: Style.space(8)
+  Keys.onEscapePressed: function (event) { view.done(); event.accepted = true }
 
   function apply(patch) {
     error = widget.saveSettings(patch) ? "" : widget.strings.t("settings.saveFailed", "Could not save this change. Try again.")
@@ -47,6 +48,7 @@ Column {
   }
 
   component SettingField: Ui.TextField {
+    id: field
     property string key: ""
     width: Style.space(190)
     foreground: view.ink
@@ -55,7 +57,17 @@ Column {
     function seed() { if (!activeFocus) text = String(view.settings[key] === undefined ? "" : view.settings[key]) }
     Component.onCompleted: seed()
     Connections { target: view; function onSettingsChanged() { seed() } }
-    onEditingFinished: if (text.trim() !== String(view.settings[key] || "")) view.apply(view.patch(key, text.trim()))
+    // Saved automatically: shortly after typing stops, when focus leaves the
+    // field, on Enter, and as a last resort when the view is torn down.
+    function commit() {
+      saveTimer.stop()
+      if (text.trim() !== String(view.settings[key] || "")) view.apply(view.patch(key, text.trim()))
+    }
+    Timer { id: saveTimer; interval: 600; onTriggered: field.commit() }
+    onTextEdited: saveTimer.restart()
+    onActiveFocusChanged: if (!activeFocus) commit()
+    onEditingFinished: commit()
+    Component.onDestruction: commit()
   }
 
   Item {
