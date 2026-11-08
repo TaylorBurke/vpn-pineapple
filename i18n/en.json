@@ -1,0 +1,11 @@
+{
+  "tooltip": "%1: %2",
+  "status.noInterface": "No interface set",
+  "status.connecting": "Connecting…",
+  "status.disconnecting": "Disconnecting…",
+  "status.connected": "Connected",
+  "status.eddieNoTunnel": "Eddie running, tunnel down",
+  "status.disconnected": "Disconnected",
+  "button.connect": "Connect",
+  "button.disconnect": "Disconnect"
+}

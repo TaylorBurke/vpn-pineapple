@@ -5,14 +5,44 @@ import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
 
-// AirVPN (Eddie) status on the bar: an upright pineapple while the tunnel
-// is up, upside down while it is down. Click for a drawer with Connect or
-// Disconnect.
+// VPN status on the bar: an upright pineapple while the tunnel's network
+// interface exists, upside down and muted while it does not. Click for a
+// drawer with Connect or Disconnect.
+//
+// A preset (AirVPN/Eddie, WireGuard, Mullvad) supplies the interface and
+// commands; any of them can be overridden in the widget settings, and the
+// Custom preset uses only the overrides.
 BarWidget {
   id: root
   moduleName: "taylorburke.vpn-pineapple"
 
-  readonly property string iface: "Eddie"
+  Commons.Translations { id: strings; directory: Qt.resolvedUrl("i18n") }
+
+  function setting(key, fallback) {
+    var v = root.settings ? root.settings[key] : undefined
+    return v === undefined || v === null ? fallback : v
+  }
+  function trimmed(key) { return String(setting(key, "")).trim() }
+
+  readonly property string preset: {
+    var p = String(setting("preset", "AirVPN (Eddie)"))
+    return ["AirVPN (Eddie)", "WireGuard (wg-quick)", "Mullvad", "Custom"].indexOf(p) >= 0 ? p : "AirVPN (Eddie)"
+  }
+  readonly property bool isEddie: preset === "AirVPN (Eddie)"
+  readonly property string presetIface:
+    isEddie ? "Eddie"
+    : preset === "WireGuard (wg-quick)" ? "wg0"
+    : preset === "Mullvad" ? "wg0-mullvad"
+    : ""
+  // Linux interface names: at most 15 characters, no slash or whitespace.
+  // Anything else is ignored so it never reaches the status check.
+  readonly property string iface: {
+    var v = trimmed("interface") || presetIface
+    return /^[A-Za-z0-9_.:@-]{1,15}$/.test(v) ? v : ""
+  }
+  readonly property string connectOverride: trimmed("connectCommand")
+  readonly property string disconnectOverride: trimmed("disconnectCommand")
+  readonly property string vpnName: trimmed("name") || (preset === "Custom" ? "VPN" : preset.replace(/ \(.*\)$/, ""))
   // Matches only the real Eddie engine, not its root-owned elevated helper
   // (eddie-cli-elevated), so pkill -INT reaches the process that saves the
   // profile. Never print this process's command line: it can hold the login.
@@ -48,11 +78,11 @@ BarWidget {
     id: check
     command: ["sh", "-c",
       'i="$1"; p="$2"; ' +
-      'if [ -e "/sys/class/net/$i" ]; then s=up; else s=down; fi; ' +
-      'if pgrep -f "$p" >/dev/null; then r=run; else r=stop; fi; ' +
+      'if [ -n "$i" ] && [ -e "/sys/class/net/$i" ]; then s=up; else s=down; fi; ' +
+      'if [ -n "$p" ] && pgrep -f "$p" >/dev/null; then r=run; else r=stop; fi; ' +
       'a=$(ip -4 -o addr show dev "$i" 2>/dev/null | awk "{print \\$4}" | cut -d/ -f1); ' +
       'echo "$s $r ${a:--}"',
-      "sh", root.iface, root.eddiePattern]
+      "sh", root.iface, root.isEddie ? root.eddiePattern : ""]
     stdout: SplitParser {
       onRead: function (line) {
         var f = line.trim().split(" ")
@@ -91,29 +121,67 @@ BarWidget {
     onTriggered: root.pending = ""
   }
 
-  function connectVpn() {
-    if (eddieRunning || pending !== "") return
-    startPending("connecting")
-    // Close the drawer first: while open, its HyprlandFocusGrab keeps focus
-    // on the popup, so the sudo terminal would open unfocused.
-    root.popupOpen = false
-    Quickshell.execDetached(["omarchy-launch-terminal", "bash", pluginDir + "/vpn-connect.sh"])
+  // Runs cmd with bash in a new terminal (for sudo prompts). Extra args
+  // reach cmd as "$1", "$2"... so values are never spliced into the script.
+  // A failing command keeps the window open so the error can be read.
+  function terminalCommand(cmd, args) {
+    return ["omarchy-launch-terminal", "bash", "-c",
+      'bash -c "$1" vpn-pineapple "${@:2}"; rc=$?; ' +
+      'if (( rc != 0 )); then echo; echo "Exited ($rc). Press Enter to close."; read -r; fi',
+      "vpn-pineapple", cmd].concat(args || [])
   }
 
-  // SIGINT = Ctrl+C in Eddie's console: its clean ExitStart() path, which
-  // saves the remembered login, same as pressing x.
+  readonly property bool canConnect:
+    connectOverride !== "" || (preset !== "Custom" && iface !== "")
+  readonly property bool canDisconnect:
+    disconnectOverride !== "" || (preset !== "Custom" && iface !== "")
+  // Eddie can be running with no tunnel yet; offer Disconnect then too.
+  readonly property bool active: connected || (isEddie && eddieRunning)
+
+  function connectVpn() {
+    if (active || pending !== "" || !canConnect) return
+    startPending("connecting")
+    // Close the drawer first: while open, its HyprlandFocusGrab keeps focus
+    // on the popup, so a sudo terminal would open unfocused.
+    root.popupOpen = false
+    if (connectOverride !== "") {
+      Quickshell.execDetached(setting("useTerminal", true)
+        ? terminalCommand(connectOverride) : ["sh", "-c", connectOverride])
+    } else if (isEddie) {
+      Quickshell.execDetached(["omarchy-launch-terminal", "bash", pluginDir + "/vpn-connect.sh"])
+    } else if (preset === "WireGuard (wg-quick)") {
+      Quickshell.execDetached(terminalCommand('sudo wg-quick up "$1"', [iface]))
+    } else if (preset === "Mullvad") {
+      Quickshell.execDetached(["mullvad", "connect"])
+    }
+  }
+
   function disconnectVpn() {
-    if (!eddieRunning || pending !== "") return
+    if (!active || pending !== "" || !canDisconnect) return
     startPending("disconnecting")
-    Quickshell.execDetached(["pkill", "-INT", "-f", eddiePattern])
+    if (disconnectOverride !== "") {
+      root.popupOpen = false
+      Quickshell.execDetached(setting("useTerminal", true)
+        ? terminalCommand(disconnectOverride) : ["sh", "-c", disconnectOverride])
+    } else if (isEddie) {
+      // SIGINT = Ctrl+C in Eddie's console: its clean ExitStart() path,
+      // which saves the remembered login, same as pressing x.
+      Quickshell.execDetached(["pkill", "-INT", "-f", eddiePattern])
+    } else if (preset === "WireGuard (wg-quick)") {
+      root.popupOpen = false
+      Quickshell.execDetached(terminalCommand('sudo wg-quick down "$1"', [iface]))
+    } else if (preset === "Mullvad") {
+      Quickshell.execDetached(["mullvad", "disconnect"])
+    }
   }
 
   readonly property string statusText:
-    pending === "connecting" ? "Connecting…"
-    : pending === "disconnecting" ? "Disconnecting…"
-    : connected ? "Connected"
-    : eddieRunning ? "Eddie running, tunnel down"
-    : "Disconnected"
+    iface === "" ? strings.t("status.noInterface", "No interface set")
+    : pending === "connecting" ? strings.t("status.connecting", "Connecting…")
+    : pending === "disconnecting" ? strings.t("status.disconnecting", "Disconnecting…")
+    : connected ? strings.t("status.connected", "Connected")
+    : isEddie && eddieRunning ? strings.t("status.eddieNoTunnel", "Eddie running, tunnel down")
+    : strings.t("status.disconnected", "Disconnected")
 
   Text {
     id: glyph
@@ -139,7 +207,7 @@ BarWidget {
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
     onClicked: root.popupOpen = !root.popupOpen
-    onEntered: if (root.bar) root.bar.showTooltip(root, "AirVPN: " + root.statusText)
+    onEntered: if (root.bar) root.bar.showTooltip(root, strings.t("tooltip", "%1: %2").arg(root.vpnName).arg(root.statusText))
     onExited: if (root.bar) root.bar.hideTooltip(root)
   }
 
@@ -176,7 +244,7 @@ BarWidget {
 
           Text {
             textFormat: Text.PlainText
-            text: "AirVPN"
+            text: root.vpnName
             color: root.bar.foreground
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.subtitle
@@ -198,16 +266,16 @@ BarWidget {
 
       Button {
         anchors.horizontalCenter: parent.horizontalCenter
-        readonly property bool wantsDisconnect: root.eddieRunning || root.connected
-        text: root.pending === "connecting" ? "Connecting…"
-              : root.pending === "disconnecting" ? "Disconnecting…"
-              : wantsDisconnect ? "Disconnect" : "Connect"
+        readonly property bool wantsDisconnect: root.active
+        text: root.pending === "connecting" ? strings.t("status.connecting", "Connecting…")
+              : root.pending === "disconnecting" ? strings.t("status.disconnecting", "Disconnecting…")
+              : wantsDisconnect ? strings.t("button.disconnect", "Disconnect") : strings.t("button.connect", "Connect")
         iconText: wantsDisconnect ? "󰅖" : "󰌘"
         foreground: root.bar.foreground
         bordered: true
         horizontalPadding: Style.spacing.panelGap
         verticalPadding: Style.spacing.controlPaddingY
-        enabled: root.pending === ""
+        enabled: root.pending === "" && (wantsDisconnect ? root.canDisconnect : root.canConnect)
         opacity: enabled ? 1.0 : 0.5
         onClicked: wantsDisconnect ? root.disconnectVpn() : root.connectVpn()
       }

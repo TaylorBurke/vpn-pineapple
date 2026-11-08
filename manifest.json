@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "taylorburke.vpn-pineapple",
   "name": "VPN Pineapple",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Taylor Burke",
   "license": "MIT",
   "description": "A pineapple on the bar that shows your VPN status: upright while the tunnel is up, upside down and muted while it is down. Click it to connect or disconnect.",
@@ -17,6 +17,64 @@
     "description": "VPN status pineapple with a connect/disconnect drawer",
     "category": "Network",
     "allowMultiple": false,
-    "defaultSection": "right"
+    "defaultSection": "right",
+    "defaults": {
+      "preset": "AirVPN (Eddie)",
+      "name": "",
+      "interface": "",
+      "connectCommand": "",
+      "disconnectCommand": "",
+      "useTerminal": true
+    },
+    "schema": [
+      {
+        "key": "preset",
+        "type": "enum",
+        "label": "VPN",
+        "options": [
+          "AirVPN (Eddie)",
+          "WireGuard (wg-quick)",
+          "Mullvad",
+          "Custom"
+        ],
+        "defaultValue": "AirVPN (Eddie)",
+        "description": "Fills in the interface and the Connect/Disconnect commands. Custom uses only the fields below."
+      },
+      {
+        "key": "name",
+        "type": "string",
+        "label": "Name",
+        "defaultValue": "",
+        "description": "Shown in the tooltip and drawer. Blank uses the preset's name."
+      },
+      {
+        "key": "interface",
+        "type": "string",
+        "label": "Network interface",
+        "defaultValue": "",
+        "description": "The pineapple is upright while this interface exists (see `ip link`). Blank uses the preset's: Eddie, wg0 or wg0-mullvad."
+      },
+      {
+        "key": "connectCommand",
+        "type": "string",
+        "label": "Connect command",
+        "defaultValue": "",
+        "description": "Overrides the preset's Connect action. Runs with bash."
+      },
+      {
+        "key": "disconnectCommand",
+        "type": "string",
+        "label": "Disconnect command",
+        "defaultValue": "",
+        "description": "Overrides the preset's Disconnect action. Runs with bash."
+      },
+      {
+        "key": "useTerminal",
+        "type": "boolean",
+        "label": "Run custom commands in a terminal",
+        "defaultValue": true,
+        "description": "Needed for commands that ask for a sudo password. Applies only to the two commands above."
+      }
+    ]
   }
 }
